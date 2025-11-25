@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create User</title>
+    <style>
+        body { font-family: sans-serif; padding: 50px; }
+        form { max-width: 400px; margin: auto; }
+        input { width: 100%; padding: 10px; margin: 10px 0; }
+        button { padding: 10px 20px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h2 style="text-align: center;">New User Registration</h2>
+    
+    <!-- Show a helpful message if they came from the login page -->
+    {% if prefill_id %}
+    <p style="text-align: center; color: red;">User ID <strong>{{ prefill_id }}</strong> not found. Please register below.</p>
+    {% endif %}
+    
+    <form action="/create_user" method="POST">
+        <label>User ID:</label>
+        <!-- Changed type="number" to type="text" to fix typing issues -->
+        <input type="text" name="user_id" value="{{ prefill_id }}" required>
+        
+        <label>Name:</label>
+        <input type="text" name="name" placeholder="Your Full Name" required>
+        
+        <label>Address:</label>
+        <input type="text" name="address" placeholder="Shipping Address" required>
+        
+        <label>Age:</label>
+        <input type="number" name="age" placeholder="Age" required>
+        
+        <button type="submit">Create Account</button>
+    </form>
+</body>
+</html>

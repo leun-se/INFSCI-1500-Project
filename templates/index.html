@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lego Store Login</title>
+    <style>
+        body { 
+            font-family: sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0;
+        }
+        .container {
+            border: 2px solid black;
+            padding: 50px;
+            text-align: center;
+            width: 400px;
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        input {
+            padding: 10px;
+            margin: 10px 0;
+            width: 80%;
+        }
+        button {
+            padding: 5px 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to the<br>lego store</h1>
+        
+        <form action="/" method="POST">
+            <input type="text" name="user_id" placeholder="please enter user-id" required>
+            <br>
+            <button type="submit">OK</button>
+        </form>
+    </div>
+</body>
+</html>
