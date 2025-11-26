@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Profile</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f9f9f9;
+            color: #333;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: white;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        /* --- HEADER SECTION --- */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+        }
+
+        .back-btn {
+            color: #333;
+            text-decoration: none;
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        .back-btn:hover { background-color: #eee; }
+
+        .balance-section {
+            text-align: right;
+        }
+        
+        .balance-display {
+            font-size: 14px;
+            margin-bottom: 5px;
+            color: #666;
+        }
+
+        .balance-box {
+            border: 2px solid #333;
+            border-radius: 4px;
+            padding: 5px 15px;
+            font-size: 24px;
+            font-weight: bold;
+            display: inline-block;
+            min-width: 100px;
+            text-align: center;
+            margin-bottom: 10px;
+            background: #f9f9f9;
+        }
+
+        /* Updated Add Funds Button (Triggers Modal) */
+        .add-btn {
+            background: #333;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 8px 15px;
+            font-weight: bold;
+            border-radius: 4px;
+            font-size: 14px;
+            display: block;
+            margin-left: auto; /* Align right */
+        }
+        .add-btn:hover { background: #555; }
+
+        /* --- MODAL STYLES --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-box {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            width: 300px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        .modal-input {
+            width: 100%;
+            padding: 10px;
+            margin: 15px 0;
+            font-size: 18px;
+            text-align: center;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .cancel-btn {
+            background: #ccc;
+            color: black;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .confirm-btn {
+            background: #28a745; /* Green for money */
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .hidden { display: none; }
+
+        /* --- INFO SECTION --- */
+        .info-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .info-label {
+            width: 100px;
+            font-weight: bold;
+            color: #555;
+        }
+        .info-value {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 8px 12px;
+            flex-grow: 1;
+            background: #f9f9f9;
+        }
+
+        /* --- BOTTOM SECTION (Split Orders/Reviews) --- */
+        .split-container {
+            display: flex;
+            gap: 30px;
+            margin-top: 40px;
+        }
+        .column {
+            flex: 1;
+        }
+        .column h3 {
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-top: 0;
+            font-size: 18px;
+        }
+
+        .list-box {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            height: 200px;
+            overflow-y: auto;
+            padding: 5px;
+            background: #fafafa;
+        }
+        
+        .list-item {
+            border: 1px solid #eee;
+            padding: 10px;
+            margin-bottom: 5px;
+            background: white;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .list-item:hover { 
+            background: #eef; 
+            border-color: #ccf;
+        }
+
+        /* --- ORDER DETAILS POPUP/AREA --- */
+        #order-details-area {
+            margin-top: 20px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            background: white;
+            padding: 20px;
+            display: none; /* Hidden by default */
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #eee;
+            padding: 8px 0;
+        }
+        .detail-row:last-child { border-bottom: none; }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <!-- HEADER -->
+        <div class="header">
+            <a href="/dashboard" class="back-btn">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+
+            <div class="balance-section">
+                <div class="balance-display">Current Balance</div>
+                <!-- UPDATED: Format balance to 2 decimal places -->
+                <div class="balance-box">${{ "%.2f"|format(user.user_balance) }}</div>
+                <!-- UPDATED: Button triggers modal -->
+                <button onclick="openFundsModal()" class="add-btn">+ Add Funds</button>
+            </div>
+        </div>
+
+        <!-- PERSONAL INFO -->
+        <div class="info-row">
+            <div class="info-label">Name:</div>
+            <div class="info-value">{{ user.name }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Age:</div>
+            <div class="info-value">{{ user.age }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Address:</div>
+            <div class="info-value">{{ user.address }}</div>
+        </div>
+
+        <!-- ORDERS & REVIEWS -->
+        <div class="split-container">
+            <!-- PAST ORDERS -->
+            <div class="column">
+                <h3>Past Orders</h3>
+                <div class="list-box">
+                    {% for order in orders %}
+                    <div class="list-item" onclick="showOrderDetails('{{ order.order_id }}')">
+                        <strong>Order #{{ order.order_id }}</strong>
+                        <br>
+                        <span style="font-size: 12px; color: #888;">Date: {{ order.order_date }}</span>
+                    </div>
+                    {% else %}
+                    <div style="padding: 10px; color: #999; text-align: center;">No orders found.</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- REVIEWS -->
+            <div class="column">
+                <h3>My Reviews</h3>
+                <div class="list-box">
+                    {% for review in reviews %}
+                    <div class="list-item" style="cursor: default;">
+                        <strong>{{ review.set_name }}</strong>
+                        <div style="color: gold;">
+                            {% for i in range(review.rating) %}★{% endfor %} 
+                            <span style="color:#ccc;">({{ review.rating }}/5)</span>
+                        </div>
+                        <span style="font-size: 12px; color: #888;">{{ review.review_date }}</span>
+                    </div>
+                    {% else %}
+                    <div style="padding: 10px; color: #999; text-align: center;">No reviews yet.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ORDER DETAILS DISPLAY (Appears when order clicked) -->
+        <div id="order-details-area">
+            <h3 style="margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px;">Order Details</h3>
+            <div id="details-content">
+                <!-- Items injected here via JS -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ADD FUNDS MODAL (Hidden by default) -->
+    <div id="funds-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <h3>Add Funds</h3>
+            <p>Select an amount to add to your balance:</p>
+            
+            <form action="/add_funds" method="POST">
+                <input type="number" name="amount" class="modal-input" placeholder="$0.00" step="0.01" min="0.01" required>
+                
+                <div class="modal-actions">
+                    <button type="button" class="cancel-btn" onclick="closeFundsModal()">Cancel</button>
+                    <button type="submit" class="confirm-btn">Confirm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- MODAL FUNCTIONS ---
+        function openFundsModal() {
+            document.getElementById('funds-modal').classList.remove('hidden');
+        }
+
+        function closeFundsModal() {
+            document.getElementById('funds-modal').classList.add('hidden');
+        }
+
+        // --- ORDER DETAILS FUNCTION ---
+        function showOrderDetails(orderId) {
+            const detailsArea = document.getElementById('order-details-area');
+            const content = document.getElementById('details-content');
+            
+            detailsArea.style.display = 'block';
+            content.innerHTML = '<div style="text-align:center; color:#888;">Loading items...</div>';
+
+            detailsArea.scrollIntoView({ behavior: 'smooth' });
+
+            fetch(`/get_order_details/${orderId}`)
+                .then(response => response.json())
+                .then(items => {
+                    if (items.length === 0) {
+                        content.innerHTML = 'No items found in this order.';
+                        return;
+                    }
+
+                    let html = '';
+                    let totalCost = 0;
+
+                    items.forEach(item => {
+                        let arrivalDate = item.order_arrival ? item.order_arrival : 'Pending';
+                        let itemTotal = item.price * item.quantity;
+                        totalCost += itemTotal;
+
+                        html += `
+                        <div class="detail-row">
+                            <div style="flex-grow: 1;">
+                                <strong>${item.item_name}</strong><br>
+                                <span style="font-size: 12px; color: #888;">Arriving: ${arrivalDate}</span>
+                            </div>
+                            <div style="text-align: right;">
+                                $${item.price} x ${item.quantity}<br>
+                                <strong>$${itemTotal.toFixed(2)}</strong>
+                            </div>
+                        </div>`;
+                    });
+
+                    // Add Total Row
+                    html += `
+                    <div class="detail-row" style="border-top: 2px solid #333; margin-top: 10px; padding-top: 10px;">
+                        <strong>TOTAL</strong>
+                        <strong>$${totalCost.toFixed(2)}</strong>
+                    </div>`;
+
+                    content.innerHTML = html;
+                })
+                .catch(err => {
+                    console.error(err);
+                    content.innerHTML = 'Error loading details.';
+                });
+        }
+    </script>
+
+</body>
+</html>

@@ -1,32 +1,25 @@
 import os
 import pymysql
-from datetime import date
+from datetime import date, timedelta
 from flask import Flask, jsonify, render_template, request, redirect, url_for, session
 from dotenv import load_dotenv
 
 # ------------------------------------------------------------------
 # ROBUST CONFIGURATION LOADING
 # ------------------------------------------------------------------
-# Get the absolute path to the folder where this app.py file lives
-basedir = os.path.abspath(os.path.dirname(__file__))
+try:
+    basedir = os.path.abspath(os.path.dirname(__file__))
+except NameError:
+    basedir = os.getcwd()
 
-# Try to load 'config.env' from that specific folder
 config_path = os.path.join(basedir, 'config.env')
-
-# If that doesn't exist, try standard '.env'
 if not os.path.exists(config_path):
     config_path = os.path.join(basedir, '.env')
 
-# Load the file we found
 load_dotenv(config_path)
 
-# DEBUGGING: Print what we found to the terminal
-print(f"DEBUG - Looking for config at: {config_path}")
-print(f"DEBUG - File exists? {os.path.exists(config_path)}")
-print(f"DEBUG - Loaded Host: {os.getenv('DB_HOST')}")
-
 app = Flask(__name__)
-app.secret_key = 'super_secret_lego_key'  
+app.secret_key = 'super_secret_lego_key' 
 
 # ------------------------------------------------------------------
 # DATABASE CONNECTION FUNCTION
@@ -65,7 +58,6 @@ def landing():
         if user:
             session['user_id'] = user['user_id']
             session['name'] = user['name']
-            # Initialize cart if not exists
             if 'cart' not in session:
                 session['cart'] = {}
             return redirect(url_for('dashboard'))
@@ -82,7 +74,7 @@ def create_user():
         name = request.form['name']
         address = request.form['address']
         age = request.form['age']
-        user_balance = 100.00 
+        user_balance = 0 # Start with 0 balance
         
         try:
             conn = get_db_connection()
@@ -97,7 +89,7 @@ def create_user():
             
             session['user_id'] = user_id
             session['name'] = name
-            session['cart'] = {} # Initialize empty cart
+            session['cart'] = {} 
             return redirect(url_for('dashboard'))
             
         except Exception as e:
@@ -106,7 +98,7 @@ def create_user():
     prefill_id = request.args.get('new_id', '')
     return render_template('create_user.html', prefill_id=prefill_id)
 
-# 3. Dashboard (The Main Store Page)
+# 3. Dashboard
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
@@ -115,7 +107,7 @@ def dashboard():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Fetch Lego Sets
+    # Fetch Lego Sets with Average Rating
     query = """
         SELECT 
             l.set_id, l.name, l.price, l.theme, l.pieces_num, l.set_quantity,
@@ -138,14 +130,276 @@ def dashboard():
     cursor.close()
     conn.close()
 
-    # Calculate Cart Badge (Unique Items Count)
     cart = session.get('cart', {})
-    # MODIFIED: Use len(cart) instead of sum(cart.values())
     cart_count = len(cart)
         
     return render_template('dashboard.html', user=session, lego_sets=lego_sets, pieces=pieces, cart_count=cart_count)
 
-# 4. Submit Rating
+# 4. Profile Page
+@app.route('/profile')
+def profile():
+    if 'user_id' not in session:
+        return redirect(url_for('landing'))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    user_id = session['user_id']
+    
+    # Fetch User Info (Real-time balance)
+    cursor.execute("SELECT * FROM USERS WHERE user_id = %s", (user_id,))
+    user_info = cursor.fetchone()
+    
+    # Fetch Past Orders
+    cursor.execute("SELECT * FROM ORDERS WHERE user_id = %s ORDER BY order_date DESC", (user_id,))
+    orders = cursor.fetchall()
+    
+    # Fetch Reviews
+    cursor.execute("""
+        SELECT r.*, l.name as set_name 
+        FROM REVIEW r 
+        JOIN LEGO_SET l ON r.set_id = l.set_id 
+        WHERE r.user_id = %s 
+        ORDER BY r.review_date DESC
+    """, (user_id,))
+    reviews = cursor.fetchall()
+    
+    cursor.close()
+    conn.close()
+    
+    return render_template('profile.html', user=user_info, orders=orders, reviews=reviews)
+
+# 5. Add Funds
+@app.route('/add_funds', methods=['POST'])
+def add_funds():
+    if 'user_id' not in session:
+        return redirect(url_for('landing'))
+        
+    try:
+        amount = float(request.form.get('amount', '0'))
+    except ValueError:
+        amount = 0.0
+    
+    user_id = session['user_id']
+    
+    if amount > 0:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE USERS SET user_balance = user_balance + %s WHERE user_id = %s", (amount, user_id))
+        conn.commit()
+        cursor.close()
+        conn.close()
+    
+    return redirect(url_for('profile'))
+
+# 6. Checkout Page (NEW)
+@app.route('/checkout')
+def checkout():
+    if 'user_id' not in session:
+        return redirect(url_for('landing'))
+
+    cart = session.get('cart', {})
+    if not cart:
+        return redirect(url_for('dashboard'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    user_id = session['user_id']
+    
+    # Fetch User Balance
+    cursor.execute("SELECT user_balance FROM USERS WHERE user_id = %s", (user_id,))
+    user_balance = cursor.fetchone()['user_balance']
+
+    # Build detailed list of items in cart
+    cart_items = []
+    total_cost = 0
+
+    for key, qty in cart.items():
+        item_type, item_id = key.split('_')
+        
+        if item_type == 'set':
+            cursor.execute("SELECT * FROM LEGO_SET WHERE set_id = %s", (item_id,))
+            item = cursor.fetchone()
+            if item:
+                cost = float(item['price']) * qty
+                cart_items.append({
+                    'type': 'set',
+                    'id': item['set_id'],
+                    'name': item['name'],
+                    'price': float(item['price']),
+                    'qty': qty,
+                    'total': cost
+                })
+                total_cost += cost
+                
+        elif item_type == 'piece':
+            cursor.execute("""
+                SELECT rp.*, ls.name as set_name 
+                FROM REPLACEMENT_PIECE rp 
+                JOIN LEGO_SET ls ON rp.set_id = ls.set_id
+                WHERE rp.piece_id = %s
+            """, (item_id,))
+            item = cursor.fetchone()
+            if item:
+                cost = float(item['price']) * qty
+                cart_items.append({
+                    'type': 'piece',
+                    'id': item['piece_id'],
+                    'name': f"Piece from {item['set_name']}",
+                    'price': float(item['price']),
+                    'qty': qty,
+                    'total': cost
+                })
+                total_cost += cost
+
+    cursor.close()
+    conn.close()
+
+    return render_template('checkout.html', 
+                           cart_items=cart_items, 
+                           total_cost=total_cost, 
+                           user_balance=float(user_balance),
+                           can_afford=(float(user_balance) >= total_cost))
+
+# 7. Place Order (NEW)
+@app.route('/place_order', methods=['POST'])
+def place_order():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Not logged in"}), 401
+
+    cart = session.get('cart', {})
+    if not cart:
+        return jsonify({"status": "error", "message": "Cart is empty"}), 400
+
+    user_id = session['user_id']
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # 1. Recalculate Total Cost to prevent tampering
+        total_cost = 0
+        items_to_process = []
+
+        for key, qty in cart.items():
+            item_type, item_id = key.split('_')
+            
+            if item_type == 'set':
+                cursor.execute("SELECT price, set_quantity FROM LEGO_SET WHERE set_id = %s", (item_id,))
+                item = cursor.fetchone()
+                # Check stock again just in case
+                if item['set_quantity'] < qty:
+                    raise Exception(f"Not enough stock for set {item_id}")
+                total_cost += float(item['price']) * qty
+                items_to_process.append({'type': 'set', 'id': item_id, 'qty': qty, 'price': item['price']})
+                
+            elif item_type == 'piece':
+                cursor.execute("SELECT price, rp_quantity FROM REPLACEMENT_PIECE WHERE piece_id = %s", (item_id,))
+                item = cursor.fetchone()
+                if item['rp_quantity'] < qty:
+                    raise Exception(f"Not enough stock for piece {item_id}")
+                total_cost += float(item['price']) * qty
+                items_to_process.append({'type': 'piece', 'id': item_id, 'qty': qty, 'price': item['price']})
+
+        # 2. Check User Balance
+        cursor.execute("SELECT user_balance FROM USERS WHERE user_id = %s", (user_id,))
+        balance = float(cursor.fetchone()['user_balance'])
+        
+        if balance < total_cost:
+            raise Exception("Insufficient funds")
+
+        # 3. Create Order
+        # Get next order_id
+        cursor.execute("SELECT MAX(order_id) as max_id FROM ORDERS")
+        max_o_id = cursor.fetchone()['max_id']
+        new_order_id = 1 if max_o_id is None else int(max_o_id) + 1
+        
+        today = date.today()
+        arrival = today + timedelta(days=5) # Random 5 day shipping logic
+        
+        # FIXED: Removed 'order_item_id' from INSERT because the database table doesn't have it
+        cursor.execute("""
+            INSERT INTO ORDERS (order_id, order_date, user_id, order_arrival) 
+            VALUES (%s, %s, %s, %s)
+        """, (new_order_id, today, user_id, arrival))
+
+        # 4. Process Items (Insert into Order_Item and Deduct Stock)
+        cursor.execute("SELECT MAX(order_item_id) as max_id FROM ORDER_ITEM")
+        max_oi_id = cursor.fetchone()['max_id']
+        current_oi_id = 1 if max_oi_id is None else int(max_oi_id) + 1
+
+        for item in items_to_process:
+            # Insert into Order_Item
+            cursor.execute("""
+                INSERT INTO ORDER_ITEM (order_item_id, order_item_quantity, price, order_id)
+                VALUES (%s, %s, %s, %s)
+            """, (current_oi_id, item['qty'], item['price'], new_order_id))
+
+            # Link to Set or Piece table
+            if item['type'] == 'set':
+                cursor.execute("INSERT INTO ORDER_SET (order_item_id, set_id) VALUES (%s, %s)", (current_oi_id, item['id']))
+                # Deduct Stock
+                cursor.execute("UPDATE LEGO_SET SET set_quantity = set_quantity - %s WHERE set_id = %s", (item['qty'], item['id']))
+            else:
+                cursor.execute("INSERT INTO ORDER_PIECE (order_item_id, piece_id) VALUES (%s, %s)", (current_oi_id, item['id']))
+                # Deduct Stock
+                cursor.execute("UPDATE REPLACEMENT_PIECE SET rp_quantity = rp_quantity - %s WHERE piece_id = %s", (item['qty'], item['id']))
+            
+            current_oi_id += 1
+
+        # 5. Deduct User Balance
+        cursor.execute("UPDATE USERS SET user_balance = user_balance - %s WHERE user_id = %s", (total_cost, user_id))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        # 6. Clear Cart
+        session['cart'] = {}
+        session.modified = True
+        
+        return jsonify({"status": "success"})
+
+    except Exception as e:
+        if conn: conn.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+# 8. Get Order Details API
+@app.route('/get_order_details/<int:order_id>')
+def get_order_details(order_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    query = """
+        SELECT 
+            oi.order_item_quantity as quantity,
+            oi.price,
+            o.order_arrival,
+            CASE 
+                WHEN os.set_id IS NOT NULL THEN ls.name 
+                WHEN op.piece_id IS NOT NULL THEN CONCAT('Piece from ', ls_p.name)
+                ELSE 'Unknown Item'
+            END as item_name
+        FROM ORDER_ITEM oi
+        JOIN ORDERS o ON oi.order_id = o.order_id
+        LEFT JOIN ORDER_SET os ON oi.order_item_id = os.order_item_id
+        LEFT JOIN LEGO_SET ls ON os.set_id = ls.set_id
+        LEFT JOIN ORDER_PIECE op ON oi.order_item_id = op.order_item_id
+        LEFT JOIN REPLACEMENT_PIECE rp ON op.piece_id = rp.piece_id
+        LEFT JOIN LEGO_SET ls_p ON rp.set_id = ls_p.set_id
+        WHERE oi.order_id = %s
+    """
+    
+    cursor.execute(query, (order_id,))
+    items = cursor.fetchall()
+    
+    cursor.close()
+    conn.close()
+    
+    return jsonify(items)
+
+# 9. Submit Rating
 @app.route('/submit_rating', methods=['POST'])
 def submit_rating():
     if 'user_id' not in session:
@@ -155,10 +409,17 @@ def submit_rating():
     set_id = data.get('set_id')
     rating = data.get('rating')
     user_id = session['user_id']
-    today = date.today()
+    today = str(date.today()) # Cast to string for safety
 
     if not set_id or not rating:
         return jsonify({"status": "error", "message": "Missing set_id or rating"}), 400
+
+    # UPDATED: Type safety to prevent errors
+    try:
+        set_id = int(set_id)
+        rating = int(rating)
+    except ValueError:
+        return jsonify({"status": "error", "message": "Invalid data format"}), 400
 
     try:
         conn = get_db_connection()
@@ -183,23 +444,23 @@ def submit_rating():
         return jsonify({"status": "success", "message": "Rating saved!"})
         
     except Exception as e:
+        print(f"DB Error in submit_rating: {e}") # Print to terminal for debugging
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# 5. Add To Cart
+# 10. Add To Cart
 @app.route('/add_to_cart', methods=['POST'])
 def add_to_cart():
     if 'user_id' not in session:
         return jsonify({"status": "error", "message": "Not logged in"}), 401
 
     data = request.get_json()
-    item_type = data.get('type') # 'set' or 'piece'
+    item_type = data.get('type')
     item_id = data.get('id')
     quantity = int(data.get('qty', 1))
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Check Stock Level in Database
     stock_available = 0
     if item_type == 'set':
         cursor.execute("SELECT set_quantity FROM LEGO_SET WHERE set_id = %s", (item_id,))
@@ -223,23 +484,21 @@ def add_to_cart():
             "message": f"Not enough stock! You have {current_in_cart} in cart, only {stock_available} available."
         })
 
-    # Add to session cart
     cart[cart_key] = current_in_cart + quantity
     session['cart'] = cart
     session.modified = True 
 
-    # MODIFIED: Return unique item count (len) instead of total quantity (sum)
     new_total = len(cart)
     
     return jsonify({"status": "success", "cart_count": new_total})
 
-# 6. Logout
+# 11. Logout
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('landing'))
 
-# 7. Test Route
+# 12. Test Route
 @app.route('/test_db')
 def test_db():
     try:

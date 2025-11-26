@@ -22,6 +22,12 @@
             border-bottom: 1px solid #ddd;
             margin-bottom: 20px;
         }
+        
+        /* UPDATED: Profile Link Styles */
+        .profile-link {
+            text-decoration: none;
+            color: inherit;
+        }
         .profile-icon {
             font-size: 24px;
             color: #555;
@@ -29,7 +35,12 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            transition: color 0.2s;
         }
+        .profile-icon:hover {
+            color: #000;
+        }
+
         .toggles {
             display: flex;
             gap: 20px;
@@ -208,25 +219,30 @@
 
     <!-- HEADER -->
     <div class="header">
-        <div class="profile-icon" title="User: {{ user.name }}">
-            <i class="fas fa-user"></i>
-            <span style="font-size: 16px; margin-left: 5px;">{{ user.name }}</span>
-        </div>
+        <!-- UPDATED: Wrapped profile icon in anchor tag -->
+        <a href="/profile" class="profile-link">
+            <div class="profile-icon" title="View Profile: {{ user.name }}">
+                <i class="fas fa-user"></i>
+                <span style="font-size: 16px; margin-left: 5px;">{{ user.name }}</span>
+            </div>
+        </a>
         
         <div class="toggles">
             <div id="tab-sets" class="toggle-btn active" onclick="switchTab('sets')">Sets</div>
             <div id="tab-pieces" class="toggle-btn" onclick="switchTab('pieces')">Pieces</div>
         </div>
 
-        <div class="checkout-icon">
-            <!-- Added Cart Badge -->
-            {% if cart_count > 0 %}
-            <div id="cart-badge" class="cart-badge">{{ cart_count }}</div>
-            {% else %}
-            <div id="cart-badge" class="cart-badge hidden">0</div>
-            {% endif %}
-            <i class="fas fa-shopping-cart"></i> Checkout
-        </div>
+        <a href="/checkout" style="text-decoration: none; color: inherit;">
+            <div class="checkout-icon">
+                <!-- Cart Badge -->
+                {% if cart_count > 0 %}
+                <div id="cart-badge" class="cart-badge">{{ cart_count }}</div>
+                {% else %}
+                <div id="cart-badge" class="cart-badge hidden">0</div>
+                {% endif %}
+                <i class="fas fa-shopping-cart"></i> Checkout
+            </div>
+        </a>
     </div>
 
     <!-- SEARCH BAR -->
@@ -244,7 +260,7 @@
                     <h3>{{ set.name }}</h3>
                     <p>Theme: {{ set.theme }}</p>
                     <p>Pieces: {{ set.pieces_num }}</p>
-                    <!-- Show Stock for User Reference -->
+                    <!-- Show Stock -->
                     <p style="font-size: 12px; color: #888;">In Stock: {{ set.set_quantity }}</p>
                 </div>
                 <div class="info-right">
@@ -268,7 +284,6 @@
                 </div>
 
                 <!-- HIDDEN CART QUANTITY POPUP -->
-                <!-- Added data-stock attribute here -->
                 <div class="qty-popup hidden" data-stock="{{ set.set_quantity }}">
                     <div class="qty-btn" onclick="changeQty(this, -1)">-</div>
                     <input type="text" class="qty-input" value="1" readonly>
@@ -300,7 +315,6 @@
                 <button class="btn" onclick="toggleCartPopup(this)">Add to cart</button>
                 
                 <!-- HIDDEN CART QUANTITY POPUP -->
-                <!-- Added data-stock attribute here -->
                 <div class="qty-popup hidden" data-stock="{{ piece.rp_quantity }}">
                     <div class="qty-btn" onclick="changeQty(this, -1)">-</div>
                     <input type="text" class="qty-input" value="1" readonly>
@@ -381,7 +395,6 @@
             }
         }
 
-        // UPDATED: Check stock limit when changing quantity
         function changeQty(btn, change) {
             const input = btn.parentElement.querySelector('.qty-input');
             const popup = btn.parentElement;
@@ -398,7 +411,6 @@
             input.value = newVal;
         }
 
-        // UPDATED: Send request to backend and update badge
         function addToCart(type, id, btn) {
             const input = btn.parentElement.querySelector('.qty-input');
             const qty = parseInt(input.value);
@@ -411,12 +423,10 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    // Update the badge number
                     const badge = document.getElementById('cart-badge');
                     badge.innerText = data.cart_count;
                     badge.classList.remove('hidden');
                     
-                    // Hide popup
                     btn.parentElement.classList.add('hidden');
                     input.value = 1;
                 } else {
