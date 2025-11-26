@@ -1,18 +1,32 @@
 import os
 import pymysql
 from datetime import date
-from flask import Flask, jsonify, render_template, request, redirect, url_for, session, flash
+from flask import Flask, jsonify, render_template, request, redirect, url_for, session
 from dotenv import load_dotenv
 
 # ------------------------------------------------------------------
-# Load environment variables from 'config.env' specifically
+# ROBUST CONFIGURATION LOADING
 # ------------------------------------------------------------------
-load_dotenv('config.env') 
+# Get the absolute path to the folder where this app.py file lives
+basedir = os.path.abspath(os.path.dirname(__file__))
+
+# Try to load 'config.env' from that specific folder
+config_path = os.path.join(basedir, 'config.env')
+
+# If that doesn't exist, try standard '.env'
+if not os.path.exists(config_path):
+    config_path = os.path.join(basedir, '.env')
+
+# Load the file we found
+load_dotenv(config_path)
+
+# DEBUGGING: Print what we found to the terminal
+print(f"DEBUG - Looking for config at: {config_path}")
+print(f"DEBUG - File exists? {os.path.exists(config_path)}")
+print(f"DEBUG - Loaded Host: {os.getenv('DB_HOST')}")
 
 app = Flask(__name__)
-
-# SECRET KEY IS REQUIRED FOR SESSIONS
-app.secret_key = 'super_secret_lego_key' 
+app.secret_key = 'super_secret_lego_key'  
 
 # ------------------------------------------------------------------
 # DATABASE CONNECTION FUNCTION
