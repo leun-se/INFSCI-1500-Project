@@ -74,7 +74,7 @@ def create_user():
         name = request.form['name']
         address = request.form['address']
         age = request.form['age']
-        user_balance = 0 # Start with 0 balance
+        user_balance = 0 
         
         try:
             conn = get_db_connection()
@@ -192,7 +192,7 @@ def add_funds():
     
     return redirect(url_for('profile'))
 
-# 6. Checkout Page (NEW)
+# 6. Checkout Page
 @app.route('/checkout')
 def checkout():
     if 'user_id' not in session:
@@ -257,12 +257,12 @@ def checkout():
     conn.close()
 
     return render_template('checkout.html', 
-                           cart_items=cart_items, 
-                           total_cost=total_cost, 
-                           user_balance=float(user_balance),
-                           can_afford=(float(user_balance) >= total_cost))
+    cart_items=cart_items, 
+    total_cost=total_cost, 
+    user_balance=float(user_balance),
+    can_afford=(float(user_balance) >= total_cost))
 
-# 7. Place Order (NEW)
+# 7. Place Order
 @app.route('/place_order', methods=['POST'])
 def place_order():
     if 'user_id' not in session:
@@ -278,7 +278,7 @@ def place_order():
     cursor = conn.cursor()
 
     try:
-        # 1. Recalculate Total Cost to prevent tampering
+        # Recalculate Total Cost to prevent tampering
         total_cost = 0
         items_to_process = []
 
@@ -302,14 +302,14 @@ def place_order():
                 total_cost += float(item['price']) * qty
                 items_to_process.append({'type': 'piece', 'id': item_id, 'qty': qty, 'price': item['price']})
 
-        # 2. Check User Balance
+        # Check User Balance
         cursor.execute("SELECT user_balance FROM USERS WHERE user_id = %s", (user_id,))
         balance = float(cursor.fetchone()['user_balance'])
         
         if balance < total_cost:
             raise Exception("Insufficient funds")
 
-        # 3. Create Order
+        # Create Order
         # Get next order_id
         cursor.execute("SELECT MAX(order_id) as max_id FROM ORDERS")
         max_o_id = cursor.fetchone()['max_id']
@@ -318,13 +318,12 @@ def place_order():
         today = date.today()
         arrival = today + timedelta(days=5) # Random 5 day shipping logic
         
-        # FIXED: Removed 'order_item_id' from INSERT because the database table doesn't have it
         cursor.execute("""
             INSERT INTO ORDERS (order_id, order_date, user_id, order_arrival) 
             VALUES (%s, %s, %s, %s)
         """, (new_order_id, today, user_id, arrival))
 
-        # 4. Process Items (Insert into Order_Item and Deduct Stock)
+        # Process Items (Insert into Order_Item and Deduct Stock)
         cursor.execute("SELECT MAX(order_item_id) as max_id FROM ORDER_ITEM")
         max_oi_id = cursor.fetchone()['max_id']
         current_oi_id = 1 if max_oi_id is None else int(max_oi_id) + 1
@@ -348,14 +347,14 @@ def place_order():
             
             current_oi_id += 1
 
-        # 5. Deduct User Balance
+        # Deduct User Balance
         cursor.execute("UPDATE USERS SET user_balance = user_balance - %s WHERE user_id = %s", (total_cost, user_id))
 
         conn.commit()
         cursor.close()
         conn.close()
 
-        # 6. Clear Cart
+        # Clear Cart
         session['cart'] = {}
         session.modified = True
         
@@ -365,7 +364,7 @@ def place_order():
         if conn: conn.rollback()
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# 8. Get Order Details API
+# Get Order Details API
 @app.route('/get_order_details/<int:order_id>')
 def get_order_details(order_id):
     conn = get_db_connection()
@@ -399,7 +398,7 @@ def get_order_details(order_id):
     
     return jsonify(items)
 
-# 9. Submit Rating
+# Submit Rating
 @app.route('/submit_rating', methods=['POST'])
 def submit_rating():
     if 'user_id' not in session:
@@ -414,7 +413,7 @@ def submit_rating():
     if not set_id or not rating:
         return jsonify({"status": "error", "message": "Missing set_id or rating"}), 400
 
-    # UPDATED: Type safety to prevent errors
+    # Type safety to prevent errors
     try:
         set_id = int(set_id)
         rating = int(rating)
@@ -447,7 +446,7 @@ def submit_rating():
         print(f"DB Error in submit_rating: {e}") # Print to terminal for debugging
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# 10. Add To Cart
+# Add To Cart
 @app.route('/add_to_cart', methods=['POST'])
 def add_to_cart():
     if 'user_id' not in session:
@@ -492,13 +491,13 @@ def add_to_cart():
     
     return jsonify({"status": "success", "cart_count": new_total})
 
-# 11. Logout
+# Logout
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('landing'))
 
-# 12. Test Route
+# Test Route
 @app.route('/test_db')
 def test_db():
     try:
