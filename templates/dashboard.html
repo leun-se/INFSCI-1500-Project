@@ -3,17 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <title>Lego Store Dashboard</title>
-    <!-- FontAwesome for Icons (Profile, Cart) -->
+    <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        /* --- GLOBAL STYLES --- */
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             margin: 0; 
             padding: 20px; 
             background-color: #f9f9f9;
+            color: #333;
         }
 
-        /* --- HEADER (Profile, Toggles, Checkout) --- */
+        /* --- HEADER --- */
         .header {
             display: flex;
             justify-content: space-between;
@@ -23,194 +25,115 @@
             margin-bottom: 20px;
         }
         
-        /* UPDATED: Profile Link Styles */
-        .profile-link {
-            text-decoration: none;
-            color: inherit;
-        }
+        .profile-link { text-decoration: none; color: inherit; }
+        
         .profile-icon {
-            font-size: 24px;
-            color: #555;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transition: color 0.2s;
+            font-size: 24px; color: #555; cursor: pointer; display: flex; align-items: center; gap: 10px;
         }
-        .profile-icon:hover {
-            color: #000;
+        .profile-icon:hover { color: #000; }
+        
+        .toggles { display: flex; gap: 20px; font-size: 18px; }
+        
+        .toggle-btn { 
+            cursor: pointer; padding: 5px 10px; border-radius: 5px; color: #888; 
         }
-
-        .toggles {
-            display: flex;
-            gap: 20px;
-            font-size: 18px;
+        .toggle-btn.active { 
+            font-weight: bold; color: black; background-color: #eee; 
         }
-        .toggle-btn {
-            cursor: pointer;
-            padding: 5px 10px;
-            border-radius: 5px;
-            color: #888;
+        
+        .checkout-icon { 
+            font-size: 24px; color: #555; cursor: pointer; position: relative; 
         }
-        .toggle-btn.active {
-            font-weight: bold;
-            color: black;
-            background-color: #eee;
-        }
-        .checkout-icon {
-            font-size: 24px;
-            color: #555;
-            cursor: pointer;
-            position: relative; /* For badge positioning */
-        }
-
-        /* --- CART BADGE --- */
+        
         .cart-badge {
-            position: absolute;
-            top: -8px;
-            left: -8px; /* To the left as requested */
-            background-color: red;
-            color: white;
-            font-size: 12px;
-            font-weight: bold;
-            border-radius: 50%;
-            width: 18px;
-            height: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid white;
-        }
-        .cart-badge.hidden { display: none; }
-
-        /* --- SEARCH BAR --- */
-        .search-container {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 30px;
-        }
-        .search-input {
-            width: 60%;
-            padding: 10px;
-            font-size: 16px;
-            border: 2px solid #333;
-            border-radius: 5px;
+            position: absolute; top: -8px; left: -8px; background-color: red; color: white;
+            font-size: 12px; font-weight: bold; border-radius: 50%; width: 18px; height: 18px;
+            display: flex; align-items: center; justify-content: center; border: 1px solid white;
         }
 
-        /* --- RESULTS LIST --- */
-        .results-container {
+        /* --- SEARCH & FILTER SECTION --- */
+        .search-area {
             max-width: 800px;
-            margin: 0 auto;
+            margin: 0 auto 30px auto;
+            position: relative;
         }
+        
+        .search-container { display: flex; justify-content: center; gap: 10px; }
+        
+        .search-input {
+            width: 70%; padding: 10px; font-size: 16px; border: 2px solid #333; border-radius: 5px;
+        }
+        
+        /* Filter Button */
+        .filter-toggle-btn {
+            background: #333; color: white; border: none; padding: 0 15px;
+            cursor: pointer; border-radius: 5px; font-weight: bold; height: 42px;
+        }
+        .filter-toggle-btn:hover { background: #555; }
+
+        /* Filter Dropdown Menu */
+        .filter-menu {
+            background: white; border: 2px solid #333; border-radius: 8px;
+            padding: 20px; margin-top: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .filter-row { margin-bottom: 15px; display: flex; align-items: center; gap: 15px; }
+        .filter-label { font-weight: bold; width: 100px; }
+        
+        input[type=range] { width: 200px; }
+        
+        /* --- RESULTS LIST --- */
+        .results-container { max-width: 800px; margin: 0 auto; }
 
         /* --- ENTRY CARD --- */
         .entry-card {
-            border: 2px solid #333;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
-            background: white;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            border: 2px solid #333; border-radius: 8px; padding: 15px; margin-bottom: 15px;
+            background: white; display: flex; flex-direction: column; gap: 10px;
         }
-        
-        .card-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-
+        .card-row { display: flex; justify-content: space-between; align-items: flex-start; }
         .info-left h3 { margin: 0; font-size: 18px; }
         .info-left p { margin: 2px 0; color: #666; }
-
         .info-right { text-align: right; }
         .price { font-size: 18px; font-weight: bold; }
         .rating { color: gold; }
 
         .actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 10px;
-            position: relative;
+            display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; position: relative;
         }
+        
         .btn {
-            padding: 5px 15px;
-            border: 1px solid #333;
-            background: transparent;
-            cursor: pointer;
-            font-weight: bold;
-            border-radius: 4px;
+            padding: 5px 15px; border: 1px solid #333; background: transparent;
+            cursor: pointer; font-weight: bold; border-radius: 4px;
         }
         .btn:hover { background: #eee; }
 
-        /* --- POPUP STYLES --- */
+        .ok-btn { 
+            background: #333; color: white; border: none; padding: 4px 8px; 
+            border-radius: 3px; cursor: pointer; font-size: 12px; 
+        }
+
+        /* --- POPUPS --- */
         .qty-popup, .rate-popup {
-            position: absolute;
-            bottom: 100%;
-            right: 0;
-            background: white;
-            border: 1px solid #333;
-            border-radius: 5px;
-            padding: 5px;
-            display: flex;
-            gap: 5px;
-            align-items: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            z-index: 10;
-            margin-bottom: 5px;
+            position: absolute; bottom: 100%; right: 0; background: white;
+            border: 1px solid #333; border-radius: 5px; padding: 5px;
+            display: flex; gap: 5px; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 10; margin-bottom: 5px;
         }
-        
-        .qty-btn {
-            width: 25px;
-            height: 25px;
-            border: 1px solid #ccc;
-            background: #eee;
-            cursor: pointer;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .qty-btn { 
+            width: 25px; height: 25px; border: 1px solid #ccc; background: #eee; 
+            cursor: pointer; display: flex; align-items: center; justify-content: center; 
         }
-        .qty-input {
-            width: 30px;
-            text-align: center;
-            border: 1px solid #ccc;
-            padding: 3px;
-        }
+        .qty-input { width: 30px; text-align: center; border: 1px solid #ccc; padding: 3px; }
 
-        .star-rating {
-            display: flex;
-            flex-direction: row-reverse; 
-            cursor: pointer;
+        /* --- STARS (SVG) --- */
+        .star-rating { display: flex; flex-direction: row-reverse; cursor: pointer; }
+        .star-rating svg { 
+            width: 24px; height: 24px; fill: #ccc; stroke: black; stroke-width: 1px; transition: fill 0.2s; 
         }
-        
-        .star-rating svg {
-            width: 24px;
-            height: 24px;
-            fill: #ccc;
-            stroke: black;
-            stroke-width: 1px;
-            transition: fill 0.2s;
-        }
-
-        .star-rating svg:hover,
-        .star-rating svg:hover ~ svg,
-        .star-rating svg.active,
-        .star-rating svg.active ~ svg {
-            fill: gold;
-        }
-
-        .ok-btn {
-            background: #333;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 12px;
-        }
+        .star-rating svg:hover, 
+        .star-rating svg:hover ~ svg, 
+        .star-rating svg.active, 
+        .star-rating svg.active ~ svg { fill: gold; }
 
         .hidden { display: none; }
     </style>
@@ -219,7 +142,6 @@
 
     <!-- HEADER -->
     <div class="header">
-        <!-- UPDATED: Wrapped profile icon in anchor tag -->
         <a href="/profile" class="profile-link">
             <div class="profile-icon" title="View Profile: {{ user.name }}">
                 <i class="fas fa-user"></i>
@@ -228,31 +150,72 @@
         </a>
         
         <div class="toggles">
-            <div id="tab-sets" class="toggle-btn active" onclick="switchTab('sets')">Sets</div>
-            <div id="tab-pieces" class="toggle-btn" onclick="switchTab('pieces')">Pieces</div>
+            <!-- Use Jinja to set active class on load based on backend filter -->
+            <div id="tab-sets" class="toggle-btn {{ 'active' if current_tab == 'sets' else '' }}" onclick="switchTab('sets')">Sets</div>
+            <div id="tab-pieces" class="toggle-btn {{ 'active' if current_tab == 'pieces' else '' }}" onclick="switchTab('pieces')">Pieces</div>
         </div>
 
-        <a href="/checkout" style="text-decoration: none; color: inherit;">
-            <div class="checkout-icon">
-                <!-- Cart Badge -->
-                {% if cart_count > 0 %}
-                <div id="cart-badge" class="cart-badge">{{ cart_count }}</div>
-                {% else %}
-                <div id="cart-badge" class="cart-badge hidden">0</div>
-                {% endif %}
-                <i class="fas fa-shopping-cart"></i> Checkout
-            </div>
-        </a>
+        <!-- UPDATED: Replaced anchor tag with onclick event for cart logic -->
+        <div class="checkout-icon" onclick="goToCheckout()">
+            {% if cart_count > 0 %}
+            <div id="cart-badge" class="cart-badge">{{ cart_count }}</div>
+            {% else %}
+            <div id="cart-badge" class="cart-badge hidden">0</div>
+            {% endif %}
+            <i class="fas fa-shopping-cart"></i> Checkout
+        </div>
     </div>
 
-    <!-- SEARCH BAR -->
-    <div class="search-container">
-        <input type="text" id="searchBox" class="search-input" 
-               placeholder="Search..." onkeyup="filterResults()">
+    <!-- SEARCH & FILTER -->
+    <div class="search-area">
+        <!-- Search Bar -->
+        <div class="search-container">
+            <input type="text" id="searchBox" class="search-input" 
+                   placeholder="Search items by name..." onkeyup="filterResults()">
+            <button class="filter-toggle-btn" onclick="toggleFilterMenu()">
+                <i class="fas fa-filter"></i> Filters
+            </button>
+        </div>
+
+        <!-- Filter Dropdown Menu (Form) -->
+        <form action="/dashboard" method="GET" id="filter-menu" class="filter-menu hidden">
+            
+            <!-- Store current tab so we don't lose it when filtering -->
+            <input type="hidden" name="tab" id="tab-input" value="{{ current_tab }}">
+
+            <div class="filter-row">
+                <div class="filter-label">Availability:</div>
+                <label>
+                    <input type="checkbox" name="stock" {% if current_stock %}checked{% endif %}> In Stock Only
+                </label>
+            </div>
+
+            <div class="filter-row">
+                <div class="filter-label">Sort By:</div>
+                <select name="sort" style="padding: 5px;">
+                    <option value="default" {% if current_sort == 'default' %}selected{% endif %}>Default (Name)</option>
+                    <option value="popular" {% if current_sort == 'popular' %}selected{% endif %}>Most Popular</option>
+                    <option value="rating" {% if current_sort == 'rating' %}selected{% endif %}>Highest Rated</option>
+                </select>
+            </div>
+
+            <div class="filter-row">
+                <div class="filter-label">Max Price:</div>
+                <input type="range" name="price" min="0" max="500" step="10" 
+                       value="{{ current_price if current_price else 500 }}" 
+                       oninput="updatePriceLabel(this.value)">
+                <span id="price-label">${{ current_price if current_price else 500 }}</span>
+            </div>
+
+            <div style="text-align: right; margin-top: 10px;">
+                <a href="/dashboard" style="margin-right: 10px; color: #666; font-size: 14px;">Clear All</a>
+                <button type="submit" class="ok-btn" style="font-size: 14px; padding: 8px 15px;">Apply Filters</button>
+            </div>
+        </form>
     </div>
 
     <!-- RESULTS: SETS -->
-    <div id="sets-container" class="results-container">
+    <div id="sets-container" class="results-container {{ 'hidden' if current_tab == 'pieces' else '' }}">
         {% for set in lego_sets %}
         <div class="entry-card search-item" data-name="{{ set.name }} {{ set.theme }}">
             <div class="card-row">
@@ -260,8 +223,9 @@
                     <h3>{{ set.name }}</h3>
                     <p>Theme: {{ set.theme }}</p>
                     <p>Pieces: {{ set.pieces_num }}</p>
-                    <!-- Show Stock -->
-                    <p style="font-size: 12px; color: #888;">In Stock: {{ set.set_quantity }}</p>
+                    <p style="font-size: 12px; color: #888;">
+                        Stock: {{ set.set_quantity }} | Popularity: {{ set.popularity }}
+                    </p>
                 </div>
                 <div class="info-right">
                     <div class="price">${{ set.price }}</div>
@@ -283,7 +247,6 @@
                     <button class="ok-btn" onclick="submitRating(this)">OK</button>
                 </div>
 
-                <!-- HIDDEN CART QUANTITY POPUP -->
                 <div class="qty-popup hidden" data-stock="{{ set.set_quantity }}">
                     <div class="qty-btn" onclick="changeQty(this, -1)">-</div>
                     <input type="text" class="qty-input" value="1" readonly>
@@ -293,28 +256,30 @@
             </div>
         </div>
         {% else %}
-        <p style="text-align:center;">No Lego Sets found in database.</p>
+        <p style="text-align:center; margin-top: 20px;">No sets match your filters.</p>
         {% endfor %}
     </div>
 
     <!-- RESULTS: PIECES -->
-    <div id="pieces-container" class="results-container hidden">
+    <div id="pieces-container" class="results-container {{ 'hidden' if current_tab == 'sets' else '' }}">
         {% for piece in pieces %}
         <div class="entry-card search-item" data-name="Piece {{ piece.piece_id }} {{ piece.set_name }}">
             <div class="card-row">
                 <div class="info-left">
                     <h3>Piece ID: {{ piece.piece_id }}</h3>
                     <p>From Set: {{ piece.set_name }}</p>
-                    <p>Quantity Available: {{ piece.rp_quantity }}</p>
+                    <p style="font-size: 12px; color: #888;">
+                        Stock: {{ piece.rp_quantity }} | Popularity: {{ piece.popularity }}
+                    </p>
                 </div>
                 <div class="info-right">
                     <div class="price">${{ piece.price }}</div>
                 </div>
             </div>
             <div class="actions">
+                <!-- Pieces don't have rate buttons -->
                 <button class="btn" onclick="toggleCartPopup(this)">Add to cart</button>
                 
-                <!-- HIDDEN CART QUANTITY POPUP -->
                 <div class="qty-popup hidden" data-stock="{{ piece.rp_quantity }}">
                     <div class="qty-btn" onclick="changeQty(this, -1)">-</div>
                     <input type="text" class="qty-input" value="1" readonly>
@@ -324,23 +289,36 @@
             </div>
         </div>
         {% else %}
-        <p style="text-align:center;">No Replacement Pieces found.</p>
+        <p style="text-align:center; margin-top: 20px;">No pieces match your filters.</p>
         {% endfor %}
     </div>
 
     <script>
-        let currentTab = 'sets';
+        // Init current tab from backend
+        let currentTab = '{{ current_tab }}';
 
+        // --- FILTER UI ---
+        function toggleFilterMenu() {
+            document.getElementById('filter-menu').classList.toggle('hidden');
+        }
+
+        function updatePriceLabel(val) {
+            document.getElementById('price-label').innerText = '$' + val;
+        }
+
+        // --- TAB SWITCHING ---
         function switchTab(tab) {
             currentTab = tab;
+            
+            // Update hidden input for next filter submit
+            document.getElementById('tab-input').value = tab;
+
             const setsContainer = document.getElementById('sets-container');
             const piecesContainer = document.getElementById('pieces-container');
             const tabSets = document.getElementById('tab-sets');
             const tabPieces = document.getElementById('tab-pieces');
-            const searchBox = document.getElementById('searchBox');
-
-            searchBox.value = '';
-            closeAllPopups();
+            
+            // Re-run search filter in case text is typed
             filterResults();
 
             if (tab === 'sets') {
@@ -356,6 +334,7 @@
             }
         }
 
+        // --- CLIENT SIDE SEARCH ---
         function filterResults() {
             const input = document.getElementById('searchBox');
             const filter = input.value.toUpperCase();
@@ -374,9 +353,24 @@
             }
         }
 
+        // --- CHECKOUT LOGIC (NEW) ---
+        function goToCheckout() {
+            const badge = document.getElementById('cart-badge');
+            // Check if badge is hidden OR if text content is 0
+            const count = badge.classList.contains('hidden') ? 0 : parseInt(badge.innerText);
+            
+            if (count > 0) {
+                window.location.href = '/checkout';
+            } else {
+                alert('Your cart is empty!');
+            }
+        }
+
+        // --- POPUP LOGIC ---
         function closeAllPopups() {
              document.querySelectorAll('.qty-popup, .rate-popup').forEach(p => {
                 p.classList.add('hidden');
+                // Reset stars
                 if (p.classList.contains('rate-popup')) {
                     p.querySelectorAll('svg').forEach(s => s.classList.remove('active'));
                     p.removeAttribute('data-selected-rating');
@@ -390,7 +384,6 @@
             closeAllPopups();
             if (isClosed) {
                 popup.classList.remove('hidden');
-                // Reset quantity to 1 on open
                 popup.querySelector('.qty-input').value = 1;
             }
         }
@@ -401,13 +394,11 @@
             const maxStock = parseInt(popup.getAttribute('data-stock'));
             
             let newVal = parseInt(input.value) + change;
-            
             if (newVal < 1) newVal = 1;
             if (newVal > maxStock) {
                 alert("Sorry, we only have " + maxStock + " in stock.");
                 newVal = maxStock;
             }
-            
             input.value = newVal;
         }
 
@@ -426,16 +417,13 @@
                     const badge = document.getElementById('cart-badge');
                     badge.innerText = data.cart_count;
                     badge.classList.remove('hidden');
-                    
                     btn.parentElement.classList.add('hidden');
                     input.value = 1;
                 } else {
                     alert(data.message);
                 }
             })
-            .catch(error => {
-                console.error('Error:', error);
-            });
+            .catch(error => { console.error('Error:', error); });
         }
 
         function toggleRatePopup(btn) {
@@ -449,10 +437,8 @@
             const ratingValue = star.getAttribute('data-value');
             const popup = star.closest('.rate-popup');
             const stars = popup.querySelectorAll('svg'); 
-
             stars.forEach(s => s.classList.remove('active'));
             star.classList.add('active');
-            
             popup.setAttribute('data-selected-rating', ratingValue);
         }
 
@@ -484,7 +470,6 @@
                 alert("An error occurred submitting the rating.");
             });
         }
-
     </script>
 </body>
 </html>

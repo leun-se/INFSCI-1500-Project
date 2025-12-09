@@ -103,6 +103,12 @@
             width: 100%;
         }
         .place-order-btn:hover { background: #555; }
+        /* Style for disabled button */
+        .place-order-btn:disabled {
+            background: #999;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
 
         /* --- POPUP MODAL (Insufficient Funds) --- */
         .modal-overlay {
@@ -183,7 +189,8 @@
 
         <!-- ACTION BUTTON -->
         <div class="action-area">
-            <button onclick="attemptOrder()" class="place-order-btn">Place Order</button>
+            <!-- Added ID for easier selection -->
+            <button id="placeOrderBtn" onclick="attemptOrder()" class="place-order-btn">Place Order</button>
         </div>
 
     </div>
@@ -208,9 +215,9 @@
 
     <!-- DATA CONTAINER to pass backend variables to JS safely -->
     <div id="checkout-data" 
-        data-user-balance="{{ user_balance }}" 
-        data-total-cost="{{ total_cost }}"
-        class="hidden"></div>
+         data-user-balance="{{ user_balance }}" 
+         data-total-cost="{{ total_cost }}"
+         class="hidden"></div>
 
     <script>
         // Fetch variables from the data container
@@ -229,6 +236,13 @@
         }
 
         function placeOrder() {
+            // Get the button
+            const btn = document.getElementById('placeOrderBtn');
+            
+            // Disable button and change text to indicate processing
+            btn.disabled = true;
+            btn.innerText = "Processing...";
+
             fetch('/place_order', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
@@ -236,14 +250,22 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
+                    // Success: Show modal (Button stays disabled to prevent double clicks)
                     document.getElementById('success-modal').classList.remove('hidden');
                 } else {
+                    // Error: Re-enable button so they can try again
                     alert('Error: ' + data.message);
+                    btn.disabled = false;
+                    btn.innerText = "Place Order";
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
                 alert('An error occurred processing your order.');
+                
+                // Network Error: Re-enable button
+                btn.disabled = false;
+                btn.innerText = "Place Order";
             });
         }
 

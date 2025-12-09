@@ -40,7 +40,7 @@ def get_db_connection():
 # ROUTES
 # ------------------------------------------------------------------
 
-# 1. Landing Page (Login)
+# Landing Page (Login)
 @app.route('/', methods=['GET', 'POST'])
 def landing():
     if request.method == 'POST':
@@ -63,10 +63,9 @@ def landing():
             return redirect(url_for('dashboard'))
         else:
             return redirect(url_for('create_user', new_id=user_id))
-
     return render_template('index.html')
 
-# 2. Create User Page
+# Create User Page
 @app.route('/create_user', methods=['GET', 'POST'])
 def create_user():
     if request.method == 'POST':
@@ -98,33 +97,82 @@ def create_user():
     prefill_id = request.args.get('new_id', '')
     return render_template('create_user.html', prefill_id=prefill_id)
 
-# 3. Dashboard
+# Dashboard
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('landing'))
     
+    show_in_stock = request.args.get('stock') == 'on'
+    sort_by = request.args.get('sort', 'default')
+    max_price = request.args.get('price')
+    active_tab = request.args.get('tab', 'sets')
+    
     conn = get_db_connection()
     cursor = conn.cursor()
     
     # Fetch Lego Sets with Average Rating
-    query = """
+    query_sets = """
         SELECT 
             l.set_id, l.name, l.price, l.theme, l.pieces_num, l.set_quantity,
-            COALESCE(ROUND(AVG(r.rating), 1), 0) as set_rating
+            COALESCE(ROUND(AVG(r.rating), 1), 0) as set_rating,
+            COUNT(DISTINCT os.order_item_id) as popularity
         FROM LEGO_SET l
         LEFT JOIN REVIEW r ON l.set_id = r.set_id
-        GROUP BY l.set_id, l.name, l.price, l.theme, l.pieces_num, l.set_quantity
+        LEFT JOIN ORDER_SET os ON l.set_id = os.set_id
+        WHERE 1=1
     """
-    cursor.execute(query)
+    params_sets = []
+
+    # Apply Filters
+    if show_in_stock:
+        query_sets += " AND l.set_quantity > 0"
+    
+    if max_price:
+        query_sets += " AND l.price <= %s"
+        params_sets.append(float(max_price))
+
+    query_sets += " GROUP BY l.set_id"
+
+    # Apply Sorting
+    if sort_by == 'popular':
+        query_sets += " ORDER BY popularity DESC"
+    elif sort_by == 'rating':
+        query_sets += " ORDER BY set_rating DESC"
+    else:
+        # Default sort (e.g. by Name)
+        query_sets += " ORDER BY l.name ASC"
+
+    cursor.execute(query_sets, tuple(params_sets))
     lego_sets = cursor.fetchall()
     
     # Fetch Pieces
-    cursor.execute("""
-        SELECT rp.*, ls.name as set_name 
+    query_pieces = """
+        SELECT 
+            rp.*, ls.name as set_name,
+            COUNT(DISTINCT op.order_item_id) as popularity
         FROM REPLACEMENT_PIECE rp 
         JOIN LEGO_SET ls ON rp.set_id = ls.set_id
-    """)
+        LEFT JOIN ORDER_PIECE op ON rp.piece_id = op.piece_id
+        WHERE 1=1
+    """
+    params_pieces = []
+
+    if show_in_stock:
+        query_pieces += " AND rp.rp_quantity > 0"
+    
+    if max_price:
+        query_pieces += " AND rp.price <= %s"
+        params_pieces.append(float(max_price))
+
+    query_pieces += " GROUP BY rp.piece_id"
+
+    if sort_by == 'popular':
+        query_pieces += " ORDER BY popularity DESC"
+    else:
+        query_pieces += " ORDER BY rp.piece_id ASC"
+
+    cursor.execute(query_pieces, tuple(params_pieces))
     pieces = cursor.fetchall()
     
     cursor.close()
@@ -133,9 +181,17 @@ def dashboard():
     cart = session.get('cart', {})
     cart_count = len(cart)
         
-    return render_template('dashboard.html', user=session, lego_sets=lego_sets, pieces=pieces, cart_count=cart_count)
+    return render_template('dashboard.html',
+                        user=session, 
+                        lego_sets=lego_sets, 
+                        pieces=pieces, 
+                        cart_count=cart_count,
+                        current_stock=show_in_stock,
+                        current_sort=sort_by,
+                        current_price=max_price,
+                        current_tab=active_tab)
 
-# 4. Profile Page
+# Profile Page
 @app.route('/profile')
 def profile():
     if 'user_id' not in session:
@@ -169,7 +225,7 @@ def profile():
     
     return render_template('profile.html', user=user_info, orders=orders, reviews=reviews)
 
-# 5. Add Funds
+# Add Funds
 @app.route('/add_funds', methods=['POST'])
 def add_funds():
     if 'user_id' not in session:
@@ -192,7 +248,7 @@ def add_funds():
     
     return redirect(url_for('profile'))
 
-# 6. Checkout Page
+# Checkout Page
 @app.route('/checkout')
 def checkout():
     if 'user_id' not in session:
@@ -262,7 +318,7 @@ def checkout():
     user_balance=float(user_balance),
     can_afford=(float(user_balance) >= total_cost))
 
-# 7. Place Order
+# Place Order
 @app.route('/place_order', methods=['POST'])
 def place_order():
     if 'user_id' not in session:
