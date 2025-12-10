@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* --- GLOBAL STYLES --- */
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background-color: #f9f9f9;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* --- HEADER --- */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 30px;
+        }
+
+        .admin-title {
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logout-link {
+            color: #d9534f;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+            border: 1px solid #d9534f;
+            padding: 5px 15px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .logout-link:hover { background: #d9534f; color: white; }
+
+        /* --- NAVIGATION TABS --- */
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            justify-content: center;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            border-radius: 5px;
+            font-size: 16px;
+            color: #666;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover { border-color: #ddd; }
+
+        .tab-btn.active {
+            border-color: #333;
+            color: #333;
+            font-weight: bold;
+            background: #fff;
+        }
+
+        /* --- STATS CARDS --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: white;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        /* --- SECTIONS --- */
+        .section-card {
+            background: white;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+
+        .section-title {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        /* --- TABLES & SCROLLING --- */
+        
+        /* NEW: Scrollable container for the orders table */
+        .table-scroll-container {
+            max-height: 400px; /* Fixed height */
+            overflow-y: auto;  /* Scroll vertical */
+            border: 1px solid #eee;
+            margin-top: 10px;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+        
+        /* NEW: Sticky Header */
+        th { 
+            text-align: left; padding: 10px; color: #666; 
+            border-bottom: 2px solid #eee;
+            position: sticky;
+            top: 0;
+            background: #f9f9f9; /* Must match bg color to cover scrolling items */
+            z-index: 10;
+        }
+        
+        td { padding: 12px 10px; border-bottom: 1px solid #f0f0f0; }
+        tr:last-child td { border-bottom: none; }
+
+        /* Make rows look clickable */
+        .clickable-row { cursor: pointer; transition: background 0.2s; }
+        .clickable-row:hover { background-color: #eef; }
+        
+        .status-low { color: #d9534f; font-weight: bold; }
+
+        /* --- FORMS --- */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .full-width { grid-column: span 2; }
+
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input:focus, select:focus { border-color: #333; outline: none; }
+
+        .action-btn {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .action-btn:hover { background: #555; }
+
+        /* --- MODAL STYLES --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000;
+        }
+        .modal-box {
+            background: white; padding: 30px; border-radius: 8px;
+            text-align: left; border: 2px solid #333;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 400px;
+            max-height: 80vh; overflow-y: auto;
+        }
+        .close-btn {
+            background: #ccc; color: black; border: none; padding: 8px 15px;
+            border-radius: 4px; cursor: pointer; float: right;
+        }
+        .detail-item {
+            border-bottom: 1px solid #eee; padding: 8px 0;
+            display: flex; justify-content: space-between;
+        }
+
+        /* Utilities */
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <!-- HEADER -->
+    <div class="header">
+        <div class="admin-title">
+            <i class="fas fa-user-shield"></i> Admin Portal
+        </div>
+        <a href="/logout" class="logout-link">Logout</a>
+    </div>
+
+    <!-- NAVIGATION TABS -->
+    <div class="nav-tabs">
+        <div class="tab-btn active" onclick="switchTab('dashboard')" id="tab-dashboard">Dashboard</div>
+        <div class="tab-btn" onclick="switchTab('inventory')" id="tab-inventory">Inventory</div>
+        <div class="tab-btn" onclick="switchTab('add-items')" id="tab-add-items">Add Items</div>
+    </div>
+
+    <!-- 1. DASHBOARD VIEW -->
+    <div id="view-dashboard">
+        
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Revenue</h3>
+                <div class="stat-value">${{ "%.2f"|format(revenue) }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Best Seller</h3>
+                <div class="stat-value" style="font-size: 24px;">{{ popular_set.name if popular_set else 'N/A' }}</div>
+                <div style="font-size: 14px; color: #888;">{{ popular_set.sales if popular_set else 0 }} sold</div>
+            </div>
+            <div class="stat-card">
+                <h3>Low Stock Items</h3>
+                <div class="stat-value" style="color: {{ 'red' if low_stock else 'green' }};">
+                    {{ low_stock|length }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Past Orders Table with Sorting -->
+        <div class="section-card">
+            <div class="section-header">
+                <h2 class="section-title">Past Orders</h2>
+                
+                <!-- Sort Form -->
+                <form action="/admin" method="GET" style="display:flex; align-items:center; gap:10px;">
+                    <label style="margin:0; font-weight:normal;">Sort By:</label>
+                    <select name="order_sort" onchange="this.form.submit()" style="width: auto; padding: 5px;">
+                        <option value="recent" {% if current_order_sort == 'recent' %}selected{% endif %}>Most Recent</option>
+                        <option value="expensive" {% if current_order_sort == 'expensive' %}selected{% endif %}>Most Expensive</option>
+                        <option value="items" {% if current_order_sort == 'items' %}selected{% endif %}>Most Items</option>
+                    </select>
+                </form>
+            </div>
+            
+            <!-- SCROLLABLE CONTAINER -->
+            <div class="table-scroll-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Date</th>
+                            <th>User ID</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Arrival</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in past_orders %}
+                        <tr class="clickable-row" onclick="openOrderModal('{{ order.order_id }}')">
+                            <td>#{{ order.order_id }}</td>
+                            <td>{{ order.order_date }}</td>
+                            <td>{{ order.user_id }}</td>
+                            <td>{{ order.total_items }}</td>
+                            <td><strong>${{ "%.2f"|format(order.total_cost or 0) }}</strong></td>
+                            <td>{{ order.order_arrival }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" style="text-align: center; color: #999;">No orders found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Low Stock Table (Only shows if items are low) -->
+        {% if low_stock %}
+        <div class="section-card" style="border-color: #d9534f;">
+            <h2 class="section-title" style="color: #d9534f;">Low Stock Alert (< 5)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Set Name</th>
+                        <th>Quantity Remaining</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for set in low_stock %}
+                    <tr>
+                        <td>{{ set.name }}</td>
+                        <td class="status-low">{{ set.set_quantity }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 2. INVENTORY MANAGEMENT VIEW -->
+    <div id="view-inventory" class="hidden">
+        <div class="section-card">
+            <h2 class="section-title" style="margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;">Update Stock Quantity</h2>
+            <form action="/admin/update_stock" method="POST" class="form-grid">
+                
+                <div class="full-width">
+                    <label>Item Type</label>
+                    <select name="type" id="stock-type" onchange="toggleStockDropdowns()">
+                        <option value="set">Lego Set</option>
+                        <option value="piece">Replacement Piece</option>
+                    </select>
+                </div>
+
+                <div class="full-width" id="dropdown-sets">
+                    <label>Select Set</label>
+                    <select name="item_id" id="select-set">
+                        {% for set in all_sets %}
+                        <option value="{{ set.set_id }}">{{ set.name }} (Qty: {{ set.set_quantity }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="full-width hidden" id="dropdown-pieces">
+                    <label>Select Piece</label>
+                    <select name="item_id" id="select-piece" disabled>
+                        {% for piece in all_pieces %}
+                        <option value="{{ piece.piece_id }}">Piece {{ piece.piece_id }} from {{ piece.set_name }} (Qty: {{ piece.rp_quantity }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="full-width">
+                    <label>New Quantity</label>
+                    <input type="number" name="new_quantity" required min="0" placeholder="Enter new total quantity">
+                </div>
+
+                <div class="full-width">
+                    <button type="submit" class="action-btn">Update Stock</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. ADD ITEMS VIEW -->
+    <div id="view-add-items" class="hidden">
+        
+        <!-- Add Set Form -->
+        <div class="section-card">
+            <h2 class="section-title" style="margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;">Add New Lego Set</h2>
+            <form action="/admin/add_set" method="POST" class="form-grid">
+                <div>
+                    <label>Set ID</label>
+                    <input type="text" name="set_id" required>
+                </div>
+                <div>
+                    <label>Set Name</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div>
+                    <label>Price ($)</label>
+                    <input type="number" name="price" step="0.01" required>
+                </div>
+                <div>
+                    <label>Theme</label>
+                    <input type="text" name="theme" required>
+                </div>
+                <div>
+                    <label>Piece Count</label>
+                    <input type="number" name="pieces" required>
+                </div>
+                <div>
+                    <label>Initial Stock</label>
+                    <input type="number" name="quantity" required>
+                </div>
+                <div class="full-width">
+                    <button type="submit" class="action-btn">Add Set</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Add Piece Form -->
+        <div class="section-card">
+            <h2 class="section-title" style="margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;">Add New Replacement Piece</h2>
+            <form action="/admin/add_piece" method="POST" class="form-grid">
+                <div>
+                    <label>Piece ID</label>
+                    <input type="text" name="piece_id" required>
+                </div>
+                <div>
+                    <label>Parent Set</label>
+                    <select name="parent_set_id" required>
+                        {% for set in all_sets %}
+                        <option value="{{ set.set_id }}">{{ set.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label>Price ($)</label>
+                    <input type="number" name="price" step="0.01" required>
+                </div>
+                <div>
+                    <label>Initial Stock</label>
+                    <input type="number" name="quantity" required>
+                </div>
+                <div class="full-width">
+                    <button type="submit" class="action-btn">Add Piece</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+<!-- ORDER DETAILS MODAL (Hidden by default) -->
+<div id="order-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h2 style="margin-top: 0; border-bottom: 2px solid #333; padding-bottom: 10px;">Order Details</h2>
+        <div id="modal-content">
+            <!-- Content injected via JS -->
+            Loading...
+        </div>
+        <div style="margin-top: 20px; text-align: right;">
+            <button class="close-btn" onclick="closeOrderModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchTab(viewName) {
+        // Hide all views
+        document.getElementById('view-dashboard').classList.add('hidden');
+        document.getElementById('view-inventory').classList.add('hidden');
+        document.getElementById('view-add-items').classList.add('hidden');
+        
+        // Deactivate all tabs
+        document.getElementById('tab-dashboard').classList.remove('active');
+        document.getElementById('tab-inventory').classList.remove('active');
+        document.getElementById('tab-add-items').classList.remove('active');
+
+        // Show selected view and activate tab
+        document.getElementById('view-' + viewName).classList.remove('hidden');
+        document.getElementById('tab-' + viewName).classList.add('active');
+    }
+
+    function toggleStockDropdowns() {
+        const type = document.getElementById('stock-type').value;
+        const setDropdown = document.getElementById('dropdown-sets');
+        const pieceDropdown = document.getElementById('dropdown-pieces');
+        const setSelect = document.getElementById('select-set');
+        const pieceSelect = document.getElementById('select-piece');
+
+        if (type === 'set') {
+            setDropdown.classList.remove('hidden');
+            pieceDropdown.classList.add('hidden');
+            setSelect.disabled = false;
+            pieceSelect.disabled = true;
+        } else {
+            setDropdown.classList.add('hidden');
+            pieceDropdown.classList.remove('hidden');
+            setSelect.disabled = true;
+            pieceSelect.disabled = false;
+        }
+    }
+
+    // --- ORDER MODAL LOGIC ---
+    function openOrderModal(orderId) {
+        const modal = document.getElementById('order-modal');
+        const content = document.getElementById('modal-content');
+        
+        modal.classList.remove('hidden');
+        content.innerHTML = '<div style="text-align:center; padding:20px;">Loading items...</div>';
+
+        fetch(`/get_order_details/${orderId}`)
+            .then(response => response.json())
+            .then(items => {
+                if (items.length === 0) {
+                    content.innerHTML = '<p>No items found.</p>';
+                    return;
+                }
+
+                let html = '';
+                let total = 0;
+                items.forEach(item => {
+                    const lineTotal = item.price * item.quantity;
+                    total += lineTotal;
+                    html += `
+                    <div class="detail-item">
+                        <div>
+                            <strong>${item.item_name}</strong><br>
+                            <span style="font-size:12px; color:#888;">${item.order_arrival}</span>
+                        </div>
+                        <div style="text-align:right;">
+                            ${item.quantity} x $${item.price}<br>
+                            <strong>$${lineTotal.toFixed(2)}</strong>
+                        </div>
+                    </div>`;
+                });
+                
+                html += `
+                <div style="margin-top:15px; border-top:2px solid #333; padding-top:10px; display:flex; justify-content:space-between; font-size:18px;">
+                    <strong>Total:</strong>
+                    <strong>$${total.toFixed(2)}</strong>
+                </div>`;
+
+                content.innerHTML = html;
+            })
+            .catch(err => {
+                content.innerHTML = '<p style="color:red;">Error loading details.</p>';
+            });
+    }
+
+    function closeOrderModal() {
+        document.getElementById('order-modal').classList.add('hidden');
+    }
+</script>
+
+</body>
+</html>

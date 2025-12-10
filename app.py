@@ -43,13 +43,15 @@ def get_db_connection():
 # Landing Page (Login)
 @app.route('/', methods=['GET', 'POST'])
 def landing():
+    error = None
     if request.method == 'POST':
         user_id = request.form['user_id']
+        password = request.form['password']
         
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute("SELECT * FROM USERS WHERE user_id = %s", (user_id,))
+        cursor.execute("SELECT * FROM USERS WHERE user_id = %s AND password = %s", (user_id, password))
         user = cursor.fetchone()
         
         cursor.close()
@@ -60,16 +62,24 @@ def landing():
             session['name'] = user['name']
             if 'cart' not in session:
                 session['cart'] = {}
+            
+            #admin check
+            if user_id.lower() == 'admin':
+                session['is_admin'] = True
+                return redirect(url_for('admin_dashboard'))
+            
+            #normal user
             return redirect(url_for('dashboard'))
         else:
-            return redirect(url_for('create_user', new_id=user_id))
-    return render_template('index.html')
+            error = "Invalid User ID or Password. Please try again."
+    return render_template('index.html', error=error)
 
 # Create User Page
 @app.route('/create_user', methods=['GET', 'POST'])
 def create_user():
     if request.method == 'POST':
         user_id = request.form['user_id']
+        password = request.form['password']
         name = request.form['name']
         address = request.form['address']
         age = request.form['age']
@@ -79,8 +89,8 @@ def create_user():
             conn = get_db_connection()
             cursor = conn.cursor()
             
-            query = "INSERT INTO USERS (user_id, name, address, user_balance, age) VALUES (%s, %s, %s, %s, %s)"
-            cursor.execute(query, (user_id, name, address, user_balance, age))
+            query = "INSERT INTO USERS (user_id, name, address, user_balance, age, password) VALUES (%s, %s, %s, %s, %s)"
+            cursor.execute(query, (user_id, name, address, user_balance, age, password))
             conn.commit()
             
             cursor.close()
@@ -569,5 +579,162 @@ def test_db():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
+@app.route('/admin')
+def admin_dashboard():
+    if not session.get('is_admin'):
+        return redirect(url_for('landing'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # --- STATISTICS ---
+    
+    # Total Revenue (Sum of all order items)
+    cursor.execute("SELECT SUM(price * order_item_quantity) as total FROM ORDER_ITEM")
+    revenue = cursor.fetchone()['total'] or 0
+    
+    # Most Popular Set (Most ordered)
+    cursor.execute("""
+        SELECT l.name, COUNT(*) as sales
+        FROM ORDER_SET os
+        JOIN LEGO_SET l ON os.set_id = l.set_id
+        GROUP BY l.set_id
+        ORDER BY sales DESC
+        LIMIT 1
+    """)
+    popular_set = cursor.fetchone()
+    
+    # Low Stock Alert (Sets < 5)
+    cursor.execute("SELECT name, set_quantity FROM LEGO_SET WHERE set_quantity < 5")
+    low_stock_sets = cursor.fetchall()
+    
+    # Past Orders
+    order_sort = request.args.get('order_sort', 'recent')
+    
+    base_query = """
+        SELECT
+            o.order_id,
+            o.order_date,
+            o.user_id,
+            o.order_arrival,
+            SUM(oi.price * oi.order_item_quantity) as total_cost,
+            SUM(oi.order_item_quantity) as total_items
+        FROM ORDERS o
+        LEFT JOIN ORDER_ITEM oi ON o.order_id = oi.order_id
+        GROUP BY o.order_id, o.order_date, o.user_id, o.order_arrival
+    """
+    
+    if order_sort == 'expensive':
+        base_query += " ORDER BY total_cost DESC"
+    elif order_sort == 'items':
+        base_query += " ORDER BY total_items DESC"
+    else:
+        # default sorts by most recent
+        base_query += " ORDER BY o.order_date DESC"
+    
+    cursor.execute(base_query)
+    past_orders = cursor.fetchall()
+    
+    # Fetch all items for inventory management dropdowns
+    cursor.execute("SELECT set_id, name, set_quantity FROM LEGO_SET ORDER BY name")
+    all_sets = cursor.fetchall()
+    
+    cursor.execute("""
+        SELECT rp.piece_id, ls.name as set_name, rp.rp_quantity 
+        FROM REPLACEMENT_PIECE rp
+        JOIN LEGO_SET ls ON rp.set_id = ls.set_id
+    """)
+    all_pieces = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+    
+    return render_template('admin.html', 
+                        revenue=revenue, 
+                        popular_set=popular_set, 
+                        low_stock=low_stock_sets, 
+                        past_orders=past_orders,
+                        all_sets=all_sets,
+                        all_pieces=all_pieces,
+                        current_order_sort=order_sort)
+
+@app.route('/admin/add_set', methods=['POST'])
+def admin_add_set():
+    if not session.get('is_admin'): return redirect(url_for('landing'))
+    
+    set_id = request.form['set_id']
+    name = request.form['name']
+    price = request.form['price']
+    theme = request.form['theme']
+    pieces = request.form['pieces']
+    qty = request.form['quantity']
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO LEGO_SET (set_id, name, price, theme, pieces_num, set_quantity)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (set_id, name, price, theme, pieces, qty))
+        conn.commit()
+    except Exception as e:
+        print("Error adding set:", e)
+    finally:
+        cursor.close()
+        conn.close()
+        
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/add_piece', methods=['POST'])
+def admin_add_piece():
+    if not session.get('is_admin'): return redirect(url_for('landing'))
+    
+    piece_id = request.form['piece_id']
+    set_id = request.form['parent_set_id']
+    price = request.form['price']
+    qty = request.form['quantity']
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO REPLACEMENT_PIECE (piece_id, set_id, price, rp_quantity)
+            VALUES (%s, %s, %s, %s)
+        """, (piece_id, set_id, price, qty))
+        conn.commit()
+    except Exception as e:
+        print("Error adding piece:", e)
+    finally:
+        cursor.close()
+        conn.close()
+        
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/update_stock', methods=['POST'])
+def admin_update_stock():
+    if not session.get('is_admin'): return redirect(url_for('landing'))
+    
+    item_type = request.form['type'] # 'set' or 'piece'
+    item_id = request.form['item_id']
+    new_qty = request.form['new_quantity']
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        if item_type == 'set':
+            cursor.execute("UPDATE LEGO_SET SET set_quantity = %s WHERE set_id = %s", (new_qty, item_id))
+        else:
+            cursor.execute("UPDATE REPLACEMENT_PIECE SET rp_quantity = %s WHERE piece_id = %s", (new_qty, item_id))
+        conn.commit()
+    except Exception as e:
+        print("Error updating stock:", e)
+    finally:
+        cursor.close()
+        conn.close()
+
+    return redirect(url_for('admin_dashboard'))
+
 if __name__ == '__main__':
     app.run(debug=True)
+    
