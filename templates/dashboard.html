@@ -31,6 +31,19 @@
             font-size: 24px; color: #555; cursor: pointer; display: flex; align-items: center; gap: 10px;
         }
         .profile-icon:hover { color: #000; }
+
+        /* Logout Button Style (Same as Admin) */
+        .logout-link {
+            color: #d9534f;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+            border: 1px solid #d9534f;
+            padding: 5px 15px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .logout-link:hover { background: #d9534f; color: white; }
         
         .toggles { display: flex; gap: 20px; font-size: 18px; }
         
@@ -155,14 +168,18 @@
             <div id="tab-pieces" class="toggle-btn {{ 'active' if current_tab == 'pieces' else '' }}" onclick="switchTab('pieces')">Pieces</div>
         </div>
 
-        <!-- UPDATED: Replaced anchor tag with onclick event for cart logic -->
-        <div class="checkout-icon" onclick="goToCheckout()">
-            {% if cart_count > 0 %}
-            <div id="cart-badge" class="cart-badge">{{ cart_count }}</div>
-            {% else %}
-            <div id="cart-badge" class="cart-badge hidden">0</div>
-            {% endif %}
-            <i class="fas fa-shopping-cart"></i> Checkout
+        <!-- Grouped Checkout and Logout -->
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <a href="/logout" class="logout-link">Logout</a>
+
+            <div class="checkout-icon" onclick="goToCheckout()">
+                {% if cart_count > 0 %}
+                <div id="cart-badge" class="cart-badge">{{ cart_count }}</div>
+                {% else %}
+                <div id="cart-badge" class="cart-badge hidden">0</div>
+                {% endif %}
+                <i class="fas fa-shopping-cart"></i> Checkout
+            </div>
         </div>
     </div>
 
