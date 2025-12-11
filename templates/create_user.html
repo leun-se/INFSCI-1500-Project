@@ -3,35 +3,84 @@
 <head>
     <title>Create User</title>
     <style>
-        body { font-family: sans-serif; padding: 50px; }
-        form { max-width: 400px; margin: auto; }
-        input { width: 100%; padding: 10px; margin: 10px 0; }
-        button { padding: 10px 20px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            padding: 50px; 
+            background-color: #f9f9f9;
+            color: #333;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background: white;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        form { margin: auto; }
+        
+        label { font-weight: bold; display: block; margin-top: 15px; }
+        
+        input { 
+            width: 100%; 
+            padding: 10px; 
+            margin: 5px 0 10px 0; 
+            box-sizing: border-box; /* Ensures padding doesn't break width */
+            border: 2px solid #ccc;
+            border-radius: 5px;
+        }
+        
+        button { 
+            padding: 10px 20px; 
+            background-color: #333; 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+            font-weight: bold;
+            border-radius: 4px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        button:hover { background: #555; }
+        
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 15px;
+            color: #666;
+            text-decoration: none;
+        }
+        .back-link:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
-    <h2 style="text-align: center;">New User Registration</h2>
-    
-    <!-- Show a helpful message if they came from the login page -->
-    {% if prefill_id %}
-    <p style="text-align: center; color: red;">User ID <strong>{{ prefill_id }}</strong> not found. Please register below.</p>
-    {% endif %}
-    
-    <form action="/create_user" method="POST">
-        <label>User ID:</label>
-        <!-- Changed type="number" to type="text" to fix typing issues -->
-        <input type="text" name="user_id" value="{{ prefill_id }}" required>
+    <div class="container">
+        <h2 style="text-align: center; margin-top: 0;">New User Registration</h2>
         
-        <label>Name:</label>
-        <input type="text" name="name" placeholder="Your Full Name" required>
+        <form action="/create_user" method="POST">
+            <label>User ID:</label>
+            <input type="text" name="user_id" placeholder="Choose a User ID" required>
+            
+            <!-- NEW PASSWORD FIELD -->
+            <label>Password:</label>
+            <input type="password" name="password" placeholder="Create a Password" required>
+            
+            <label>Name:</label>
+            <input type="text" name="name" placeholder="Your Full Name" required>
+            
+            <label>Address:</label>
+            <input type="text" name="address" placeholder="Shipping Address" required>
+            
+            <label>Age:</label>
+            <input type="number" name="age" placeholder="Age" required>
+            
+            <button type="submit">Create Account</button>
+        </form>
         
-        <label>Address:</label>
-        <input type="text" name="address" placeholder="Shipping Address" required>
-        
-        <label>Age:</label>
-        <input type="number" name="age" placeholder="Age" required>
-        
-        <button type="submit">Create Account</button>
-    </form>
+        <a href="/" class="back-link">Back to Login</a>
+    </div>
 </body>
 </html>
